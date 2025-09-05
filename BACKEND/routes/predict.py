@@ -8,8 +8,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from PIL import Image
 
-# Import the real models and database extension
+# --- CORRECTION: Use relative imports for modules in the parent directory ---
 from ..model_loader import make_prediction
+from ..validator_loader import is_mri_scan
 from ..extensions import mongo
 
 predict_bp = Blueprint("predict", __name__)
@@ -28,8 +29,15 @@ def upload_file():
     image_bytes = file.read()
 
     try:
-        # --- CORRECTION: REMOVED VALIDATION LOGIC ---
-        # No validation, just run the real tumor prediction directly
+        # Validate the image content with the real model
+        is_valid_mri, confidence = is_mri_scan(image_bytes)
+        
+        if not is_valid_mri:
+            return jsonify({
+                "msg": f"Validation Error: The uploaded image is not a valid spinal cord MRI scan. Confidence: {confidence:.2f}%"
+            }), 400
+        
+        # If validation passes, run the real tumor prediction
         prediction_label, prediction_confidence = make_prediction(image_bytes)
 
         # Convert the prediction from 0/1 to a human-readable string
