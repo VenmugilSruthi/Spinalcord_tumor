@@ -1,22 +1,19 @@
-# predict.py
+# routes/predict.py
 import os
 import uuid
 import datetime
+import io
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
+from PIL import Image
+
+# Import the real models
+from model_loader import make_prediction
+from validator_loader import is_mri_scan # <-- Assuming you create this file
 
 predict_bp = Blueprint("predict", __name__)
 
-# Fake model prediction (replace with real ML model later)
-def fake_model_predict(file_path):
-    # Here you can load your ML/DL model and do prediction
-    import random
-    result = random.choice(["Tumor Detected", "No Tumor"])
-    confidence = round(random.uniform(70, 99), 2)
-    return {"result": result, "confidence": f"{confidence}%"}
-
-# Upload MRI for prediction
 @predict_bp.route("/upload", methods=["POST"])
 @jwt_required()
 def upload_file():
@@ -27,29 +24,57 @@ def upload_file():
     if file.filename == "":
         return jsonify({"msg": "No selected file"}), 400
 
-    filename = secure_filename(file.filename)
-    save_dir = "uploads"
-    os.makedirs(save_dir, exist_ok=True)
-    file_path = os.path.join(save_dir, filename)
-    file.save(file_path)
+    # Read the file's bytes
+    image_bytes = file.read()
 
-    # Run prediction
-    prediction = fake_model_predict(file_path)
+    try:
+        # Validate the image content with the real model
+        is_valid_mri, confidence = is_mri_scan(image_bytes)
+        
+        if not is_valid_mri:
+            return jsonify({
+                "msg": f"Validation Error: The uploaded image is not a valid spinal cord MRI scan. Confidence: {confidence:.2f}%"
+            }), 400
+        
+        # If validation passes, run the real tumor prediction
+        prediction_label, prediction_confidence = make_prediction(image_bytes)
 
-    # Save record in memory (later replace with DB)
-    record = {
-        "id": str(uuid.uuid4()),
-        "user": get_jwt_identity(),
-        "filename": filename,
-        "result": prediction["result"],
-        "confidence": prediction["confidence"],
-        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
+        # Convert the prediction from 0/1 to a human-readable string
+        result = "Tumor Detected" if prediction_label == 1 else "No Tumor"
+        confidence_percent = f"{prediction_confidence * 100:.2f}%"
+        
+        # Create the prediction object to be sent back to the frontend
+        prediction_result = {
+            "result": result,
+            "confidence": confidence_percent
+        }
+        
+        # Save the file (optional, for record keeping)
+        filename = secure_filename(file.filename)
+        save_dir = "uploads"
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir, filename)
+        
+        with open(file_path, "wb") as f:
+            f.write(image_bytes)
 
-    # For now, return directly
-    return jsonify({"prediction": prediction, "record": record}), 200
+        # Save record in memory (later replace with DB)
+        record = {
+            "id": str(uuid.uuid4()),
+            "user": get_jwt_identity(),
+            "filename": filename,
+            "result": prediction_result["result"],
+            "confidence": prediction_result["confidence"],
+            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
 
-# Stats endpoint (recent predictions)
+        return jsonify({"prediction": prediction_result, "record": record}), 200
+
+    except Exception as e:
+        print(f"Error during prediction or validation: {e}")
+        return jsonify({"msg": f"An error occurred on the server: {e}"}), 500
+
+# Stats endpoint (remains the same)
 @predict_bp.route("/stats", methods=["GET"])
 @jwt_required()
 def stats():
