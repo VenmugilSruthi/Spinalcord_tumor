@@ -12,21 +12,24 @@ load_dotenv()
 from routes.auth import auth_bp
 from routes.predict import predict_bp
 from routes.chatbot import chatbot_bp
-from routes.profile import profile_bp # <-- ADD THIS LINE
+from routes.profile import profile_bp
 
 def create_app():
     app = Flask(__name__)
-
-    # ✅ FIX: Allow Authorization header in CORS
+    
+    # ✅ FIXED CORS Configuration
     CORS(
         app,
-        resources={
-            r"/": {"origins": "*"},        # allow health check
-            r"/api/*": {"origins": "*"}    # allow all API routes
-        },
+        origins=[
+            "https://spinalcord-tumor-1.onrender.com",  # Your frontend domain
+            "http://localhost:3000",                    # Local React dev
+            "http://localhost:5173",                    # Local Vite dev
+            "*"                                         # Allow all for testing
+        ],
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"]
-)
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    )
 
     # --- CONFIGURATION FROM .ENV FILE ---
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
@@ -35,7 +38,7 @@ def create_app():
     # --- INITIALIZE EXTENSIONS ---
     mongo.init_app(app)
     jwt = JWTManager(app)
-
+    
     # ✅ Health check route
     @app.route('/')
     def health_check():
@@ -45,12 +48,23 @@ def create_app():
         except Exception as e:
             return jsonify({"status": "Backend is running but FAILED to connect to the database.", "error": str(e)}), 500
 
+    # ✅ Add explicit OPTIONS handling for preflight requests
+    @app.before_request
+    def handle_preflight():
+        from flask import request
+        if request.method == "OPTIONS":
+            response = jsonify({"status": "OK"})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            return response
+
     # Register the blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(predict_bp, url_prefix='/api/predict')
     app.register_blueprint(chatbot_bp, url_prefix='/api/chatbot')
-    app.register_blueprint(profile_bp, url_prefix='/api/profile') # <-- ADD THIS LINE
-
+    app.register_blueprint(profile_bp, url_prefix='/api/profile')
+    
     return app
 
 if __name__ == '__main__':
