@@ -1,69 +1,44 @@
-import os
-from flask import Flask, jsonify
-from flask_cors import CORS
-from flask_jwt_extended import JWTManager
-from datetime import timedelta
+// Example: Save token after login
+async function loginUser(email, password) {
+  const response = await fetch("https://spinalcord-tumor.onrender.com/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
 
-# Extensions
-from extensions import mongo
+  const data = await response.json();
+  if (response.ok) {
+    localStorage.setItem("token", data.token); // save JWT
+    alert("Login successful!");
+  } else {
+    alert(data.msg || "Login failed");
+  }
+}
 
-# Blueprints
-from routes.auth import auth_bp
-from routes.chatbot import chatbot_bp
-from routes.predict import predict_bp
-from routes.profile import profile_bp
+// Upload MRI scan with token
+async function uploadMRI(file) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please log in first!");
+    return;
+  }
 
-def create_app():
-    app = Flask(__name__)
+  const formData = new FormData();
+  formData.append("mriScan", file);
 
-    # JWT configuration
-    app.config["JWT_SECRET_KEY"] = "your-secret-key"  # ⚠️ change this in production
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
+  const response = await fetch("https://spinalcord-tumor.onrender.com/api/predict/upload", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token  // ✅ attach token
+    },
+    body: formData
+  });
 
-    # ✅ MongoDB configuration
-    app.config["MONGO_URI"] = os.getenv("MONGO_URI")  # must be set in Render Environment
-
-    # Initialize extensions
-    jwt = JWTManager(app)
-    mongo.init_app(app)
-
-    # ✅ CORS (added correct backend domain)
-    CORS(
-        app,
-        origins=[
-            "https://spinalcord-tumor.onrender.com",   # ✅ your live backend
-            "https://spinalcord-tumor-1.onrender.com", # keep if frontend hosted there
-            "http://localhost:3000",
-            "http://localhost:5173"
-        ],
-        supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    )
-
-    # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(chatbot_bp, url_prefix="/api/chatbot")
-    app.register_blueprint(predict_bp, url_prefix="/api/predict")
-    app.register_blueprint(profile_bp, url_prefix="/api/profile")
-
-    # Root route
-    @app.route("/")
-    def home():
-        return jsonify({"status": "Backend is running!"})
-
-    # ✅ Database health check
-    @app.route("/dbcheck")
-    def dbcheck():
-        try:
-            mongo.db.command("ping")
-            return jsonify({"status": "MongoDB connected ✅"})
-        except Exception as e:
-            return jsonify({"status": "MongoDB connection failed ❌", "error": str(e)}), 500
-
-    return app
-
-# For local debugging
-if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+  const data = await response.json();
+  if (response.ok) {
+    console.log("Prediction:", data);
+    alert("Result: " + data.prediction.result + " | Confidence: " + data.prediction.confidence);
+  } else {
+    alert("Error: " + (data.msg || "Upload failed"));
+  }
+}
