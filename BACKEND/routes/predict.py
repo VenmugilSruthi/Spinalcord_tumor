@@ -61,12 +61,26 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# ✅ ADD OPTIONS HANDLER FOR PREFLIGHT REQUESTS
+@predict_bp.route('/upload', methods=['OPTIONS'])
+def upload_options():
+    """Handle preflight OPTIONS request"""
+    response = jsonify({"status": "OK"})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
+
 @predict_bp.route('/upload', methods=['POST'])
 @jwt_required()
 def upload_file():
-    if 'mriScan' not in request.files: return jsonify({'msg': 'No file part in the request'}), 400
+    if 'mriScan' not in request.files: 
+        return jsonify({'msg': 'No file part in the request'}), 400
+    
     file = request.files['mriScan']
-    if file.filename == '': return jsonify({'msg': 'No file selected'}), 400
+    if file.filename == '': 
+        return jsonify({'msg': 'No file selected'}), 400
 
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
@@ -76,20 +90,40 @@ def upload_file():
             return jsonify({'msg': "Validation Error: The uploaded image does not appear to be a medical MRI scan. Please upload a relevant image."}), 400
 
         prediction_label, probability = make_prediction(image_bytes)
-        if prediction_label is None: return jsonify({'msg': 'Error processing the image'}), 500
+        if prediction_label is None: 
+            return jsonify({'msg': 'Error processing the image'}), 500
 
         result_text = "Tumor Detected" if prediction_label == 1 else "No Tumor"
         confidence_str = f"{probability:.2%}"
         
         mongo.db.predictions.insert_one({
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "filename": filename, "result": result_text, "confidence": confidence_str,
+            "filename": filename, 
+            "result": result_text, 
+            "confidence": confidence_str,
             "user": get_jwt_identity()
         })
 
-        return jsonify({'fileName': filename, 'prediction': {'result': result_text, 'confidence': confidence_str}}), 200
+        return jsonify({
+            'fileName': filename, 
+            'prediction': {
+                'result': result_text, 
+                'confidence': confidence_str
+            }
+        }), 200
     else:
         return jsonify({'msg': 'File type not allowed'}), 400
+
+# ✅ ADD OPTIONS HANDLER FOR STATS ROUTE TOO
+@predict_bp.route('/stats', methods=['OPTIONS'])
+def stats_options():
+    """Handle preflight OPTIONS request for stats"""
+    response = jsonify({"status": "OK"})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
 
 @predict_bp.route('/stats', methods=['GET'])
 @jwt_required()
@@ -98,5 +132,15 @@ def get_stats():
     preds = list(mongo.db.predictions.find({"user": user}).sort("date", -1).limit(20))
     tumor_count = mongo.db.predictions.count_documents({"user": user, "result": "Tumor Detected"})
     no_tumor_count = mongo.db.predictions.count_documents({"user": user, "result": "No Tumor"})
-    formatted_preds = [{"date": p["date"], "filename": p["filename"], "result": p["result"], "confidence": p["confidence"]} for p in preds]
-    return jsonify({"total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count}, "recent_predictions": formatted_preds}), 200
+    formatted_preds = [
+        {
+            "date": p["date"], 
+            "filename": p["filename"], 
+            "result": p["result"], 
+            "confidence": p["confidence"]
+        } for p in preds
+    ]
+    return jsonify({
+        "total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count}, 
+        "recent_predictions": formatted_preds
+    }), 200
