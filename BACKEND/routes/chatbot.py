@@ -6,7 +6,7 @@ from datetime import datetime
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 # ✅ Absolute import for Render deployment
-from BACKEND.extensions import mongo
+from extensions import mongo
 
 chatbot_bp = Blueprint('chatbot_bp', __name__)
 
