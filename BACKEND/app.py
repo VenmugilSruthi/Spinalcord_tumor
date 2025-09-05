@@ -1,60 +1,47 @@
-import os
+# app.py
 from flask import Flask, jsonify
 from flask_cors import CORS
-from extensions import mongo
 from flask_jwt_extended import JWTManager
-from dotenv import load_dotenv
+from datetime import timedelta
 
-# Load environment variables from .env file
-load_dotenv()
+# Blueprints
+from auth import auth_bp
+from chatbot import chatbot_bp
+from predict import predict_bp
+from profile import profile_bp
 
-# Import your route blueprints
-from routes.auth import auth_bp
-from routes.predict import predict_bp
-from routes.chatbot import chatbot_bp
-from routes.profile import profile_bp
+# Initialize app
+app = Flask(__name__)
 
-def create_app():
-    app = Flask(__name__)
-    
-    # ✅ Proper CORS Configuration
-    CORS(
-        app,
-        origins=[
-            "https://spinalcord-tumor-1.onrender.com",  # Your frontend domain
-            "http://localhost:3000",                    # Local React dev
-            "http://localhost:5173",                    # Local Vite dev
-        ],
-        supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    )
+# JWT configuration
+app.config["JWT_SECRET_KEY"] = "your-secret-key"  # ⚠️ change this in production
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
-    # --- CONFIGURATION FROM .ENV FILE ---
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-    app.config["MONGO_URI"] = os.getenv("MONGO_URI")
-    
-    # --- INITIALIZE EXTENSIONS ---
-    mongo.init_app(app)
-    jwt = JWTManager(app)
-    
-    # ✅ Health check route
-    @app.route('/')
-    def health_check():
-        try:
-            mongo.db.command('ping')
-            return jsonify({"status": "Backend is running and CONNECTED to the database!"})
-        except Exception as e:
-            return jsonify({"status": "Backend is running but FAILED to connect to the database.", "error": str(e)}), 500
+jwt = JWTManager(app)
 
-    # ✅ Register the blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(predict_bp, url_prefix='/api/predict')
-    app.register_blueprint(chatbot_bp, url_prefix='/api/chatbot')
-    app.register_blueprint(profile_bp, url_prefix='/api/profile')
-    
-    return app
+# ✅ Correct CORS setup
+CORS(app,
+     origins=[
+         "https://spinalcord-tumor-1.onrender.com",   # frontend deployed on Render
+         "http://localhost:3000",                     # local React
+         "http://localhost:5173"                      # local Vite
+     ],
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
-if __name__ == '__main__':
-    app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+# Register blueprints
+app.register_blueprint(auth_bp, url_prefix="/api/auth")
+app.register_blueprint(chatbot_bp, url_prefix="/api/chatbot")
+app.register_blueprint(predict_bp, url_prefix="/api/predict")
+app.register_blueprint(profile_bp, url_prefix="/api/profile")
+
+# Root route (health check)
+@app.route("/")
+def home():
+    return jsonify({"status": "Backend is running and CONNECTED to the database!"})
+
+# Run server locally (ignored on Render, since Gunicorn is used there)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
