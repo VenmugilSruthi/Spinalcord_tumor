@@ -1,107 +1,81 @@
-# routes/predict.py
+# routes/chatbot.py
 import os
-import datetime
+import google.generativeai as genai
 from flask import Blueprint, request, jsonify
+from datetime import datetime
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from werkzeug.utils import secure_filename
 
-# ✅ Absolute imports (BACKEND is the top-level package)
-from BACKEND.model_loader import make_prediction
-from BACKEND.validator_loader import is_mri_scan
+# ✅ Absolute import for Render deployment
 from BACKEND.extensions import mongo
 
-predict_bp = Blueprint("predict", __name__)
+chatbot_bp = Blueprint('chatbot_bp', __name__)
 
-@predict_bp.route("/upload", methods=["POST"])
-@jwt_required()
-def upload_file():
-    if "mriScan" not in request.files:
-        return jsonify({"msg": "No file part"}), 400
+# --- CONFIGURE THE GEMINI AI MODEL ---
+chat = None
+try:
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+    if not GOOGLE_API_KEY:
+        raise ValueError("GOOGLE_API_KEY not found in environment variables.")
     
-    file = request.files["mriScan"]
-    if file.filename == "":
-        return jsonify({"msg": "No selected file"}), 400
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    model = genai.GenerativeModel(
+        model_name='gemini-1.5-flash',
+        system_instruction=(
+            "You are a friendly and helpful AI assistant for a web application "
+            "that detects spinal tumors from MRI scans. The application was created by "
+            "Venmugil Sruthi and Vidhi Pant. Answer user questions about the application, "
+            "spinal health, and medical imaging. Keep answers concise and helpful. "
+            "If a user asks something unrelated, politely guide them back."
+        )
+    )
+    chat = model.start_chat(history=[])
+    print("✅ Gemini AI Model initialized successfully.")
+except Exception as e:
+    print(f"❌ ERROR initializing Gemini AI Model: {e}")
 
-    # Read the file's bytes
-    image_bytes = file.read()
-
-    try:
-        # Validate MRI scan
-        is_valid_mri, confidence = is_mri_scan(image_bytes)
-        if not is_valid_mri:
-            return jsonify({
-                "msg": f"Validation Error: Not a valid spinal cord MRI scan. Confidence: {confidence:.2f}%"
-            }), 400
-        
-        # Make prediction
-        prediction_label, prediction_confidence = make_prediction(image_bytes)
-        result = "Tumor Detected" if prediction_label == 1 else "No Tumor"
-        confidence_percent = f"{prediction_confidence * 100:.2f}%"
-        
-        prediction_result = {
-            "result": result,
-            "confidence": confidence_percent
-        }
-        
-        # Save uploaded file
-        filename = secure_filename(file.filename)
-        save_dir = "uploads"
-        os.makedirs(save_dir, exist_ok=True)
-        file_path = os.path.join(save_dir, filename)
-        with open(file_path, "wb") as f:
-            f.write(image_bytes)
-
-        # Save prediction to MongoDB
-        user_id = get_jwt_identity()
-        prediction_data = {
-            "user_id": user_id,
-            "filename": filename,
-            "result": prediction_result["result"],
-            "confidence": prediction_result["confidence"],
-            "date": datetime.datetime.now()
-        }
-        mongo.db.predictions.insert_one(prediction_data)
-
-        return jsonify({"prediction": prediction_result, "record": prediction_data}), 200
-
-    except Exception as e:
-        print(f"Error during prediction: {e}")
-        return jsonify({"msg": f"An error occurred on the server: {e}"}), 500
-
-# --- Stats endpoint ---
-@predict_bp.route("/stats", methods=["GET"])
+# --- Ask Chatbot (Now requires login) ---
+@chatbot_bp.route('/ask', methods=['POST'])
 @jwt_required()
-def stats():
+def ask_chatbot():
+    if not chat:
+        return jsonify({"answer": "AI model is offline. Please check server config."}), 500
+
+    data = request.get_json()
+    user_identity = get_jwt_identity()
+    question = data.get("question", "").strip()
+
+    if not question:
+        return jsonify({"error": "No question provided."}), 400
+
     try:
-        user_id = get_jwt_identity()
-
-        # Recent predictions
-        recent_predictions = list(mongo.db.predictions.find(
-            {"user_id": user_id},
-            {"_id": 0}
-        ).sort("date", -1).limit(20))
-
-        # Totals
-        total_counts = mongo.db.predictions.aggregate([
-            {"$match": {"user_id": user_id}},
-            {"$group": {"_id": "$result", "count": {"$sum": 1}}}
-        ])
-
-        tumor_count, no_tumor_count = 0, 0
-        for item in total_counts:
-            if item["_id"] == "Tumor Detected":
-                tumor_count = item["count"]
-            else:
-                no_tumor_count = item["count"]
-
-        for pred in recent_predictions:
-            pred["date"] = pred["date"].strftime("%Y-%m-%d %H:%M:%S")
-
-        return jsonify({
-            "total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count},
-            "recent_predictions": recent_predictions
-        }), 200
-
+        response = chat.send_message(question)
+        answer = response.text
     except Exception as e:
-        print(f"Error fetching stats: {e}")
-        return jsonify({"msg": "An error occurred fetching statistics"}), 500
+        print(f"❌ ERROR: Gemini API call failed: {e}")
+        answer = "Sorry, I'm having trouble thinking right now. Please try again."
+
+    mongo.db.chats.insert_one({
+        "userId": user_identity,
+        "question": question,
+        "answer": answer,
+        "timestamp": datetime.now()
+    })
+    return jsonify({"answer": answer}), 200
+
+# --- Retrieve Chat History (Now requires login) ---
+@chatbot_bp.route('/history', methods=['GET'])
+@jwt_required()
+def get_chat_history():
+    user_identity = get_jwt_identity()
+    history = list(mongo.db.chats.find({"userId": user_identity}).sort("timestamp", -1))
+    
+    response = [
+        {
+            "question": item["question"],
+            "answer": item["answer"],
+            "timestamp": item["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        }
+        for item in history
+    ]
+    return jsonify(response), 200
