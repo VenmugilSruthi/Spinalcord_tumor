@@ -25,13 +25,14 @@ def create_app():
 
     # Initialize extensions
     jwt = JWTManager(app)
-    mongo.init_app(app)   # ✅ this was missing before
+    mongo.init_app(app)
 
-    # ✅ CORS
+    # ✅ CORS (added correct backend domain)
     CORS(
         app,
         origins=[
-            "https://spinalcord-tumor-1.onrender.com",
+            "https://spinalcord-tumor.onrender.com",   # ✅ your live backend
+            "https://spinalcord-tumor-1.onrender.com", # keep if frontend hosted there
             "http://localhost:3000",
             "http://localhost:5173"
         ],
