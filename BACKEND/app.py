@@ -1,45 +1,63 @@
-#Example: Save token after login
-async function loginUser(email, password) {
-  const response = await fetch("https://spinalcord-tumor.onrender.com/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
-  });
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_bcrypt import Bcrypt
+from flask_pymongo import PyMongo
+import os
 
-  const data = await response.json();
-  if (response.ok) {
-    localStorage.setItem("token", data.token); // save JWT
-    alert("Login successful!");
-  } else {
-    alert(data.msg || "Login failed");
-  }
-}
+app = Flask(__name__)
+CORS(app)
+bcrypt = Bcrypt(app)
 
-# Upload MRI scan with token
-async function uploadMRI(file) {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Please log in first!");
-    return;
-  }
+# MongoDB setup
+app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb://localhost:27017/spinalcord")
+mongo = PyMongo(app)
 
-  const formData = new FormData();
-  formData.append("mriScan", file);
+# JWT setup
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "super-secret-key")
+jwt = JWTManager(app)
 
-  const response = await fetch("https://spinalcord-tumor.onrender.com/api/predict/upload", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + token  # ✅ attach token
+# -----------------------
+# Auth: Login endpoint
+# -----------------------
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
 
-    },
-    body: formData
-  });
+    user = mongo.db.users.find_one({"email": email})
+    if user and bcrypt.check_password_hash(user["password"], password):
+        access_token = create_access_token(identity=str(user["_id"]))
+        return jsonify({"token": access_token}), 200
+    return jsonify({"msg": "Invalid credentials"}), 401
 
-  const data = await response.json();
-  if (response.ok) {
-    console.log("Prediction:", data);
-    alert("Result: " + data.prediction.result + " | Confidence: " + data.prediction.confidence);
-  } else {
-    alert("Error: " + (data.msg || "Upload failed"));
-  }
-}
+# -----------------------
+# Upload MRI scan endpoint
+# -----------------------
+@app.route("/api/predict/upload", methods=["POST"])
+@jwt_required()
+def upload_mri():
+    if "mriScan" not in request.files:
+        return jsonify({"msg": "No file uploaded"}), 400
+
+    file = request.files["mriScan"]
+    filename = file.filename
+    filepath = os.path.join("uploads", filename)
+    os.makedirs("uploads", exist_ok=True)
+    file.save(filepath)
+
+    # TODO: Insert your MRI prediction logic here
+    # For example, call your ML model and return prediction
+    prediction_result = {"result": "tumor", "confidence": 0.95}  # example
+
+    return jsonify({"prediction": prediction_result}), 200
+
+# -----------------------
+# Run app
+# -----------------------
+def create_app():
+    return app
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
