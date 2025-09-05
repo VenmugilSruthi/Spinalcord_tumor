@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spinal Cord Tumor Detection</title>
+
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css" />
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script src="script.js" defer></script>
+  
+  <script src="https://accounts.google.com/gsi/client" onload="initializeGoogleSignIn()" async defer></script>
+</head>
+<body>
+  <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+
+  <div class="top-left-controls">
+    <button class="logout-btn-top" id="logoutButtonTop" style="display: none;">Logout</button>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <a href="#" onclick="showPage('home-dashboard', this)" class="active">
+      <i class="fas fa-home"></i> <span class="link-text">Home</span>
+    </a>
+    <a href="#" onclick="showPage('upload-page', this)">
+      <i class="fas fa-upload"></i> <span class="link-text">Upload</span>
+    </a>
+    <a href="#" onclick="showPage('team-page', this)">
+      <i class="fas fa-users"></i> <span class="link-text">Our Team</span>
+    </a>
+    <a href="#" onclick="showPage('description', this)">
+      <i class="fas fa-info-circle"></i> <span class="link-text">Description</span>
+    </a>
+    <a href="#" onclick="showPage('dashboard-page', this)">
+      <i class="fas fa-chart-bar"></i> <span class="link-text">Dashboard</span>
+    </a>
+    <a href="#" onclick="showPage('profile-page', this)">
+      <i class="fas fa-user-circle"></i> <span class="link-text">My Profile</span>
+    </a>
+    <a href="#" id="logoutButtonSidebar">
+      <i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span>
+    </a>
+  </div>
+
+  <div class="main" id="mainContent">
+    
+    <div class="page active" id="login-page">
+      <div class="header">
+        <h1>Spinal Cord Tumor Detection</h1>
+        <p class="tagline">AI-Powered MRI Image Analysis</p>
+      </div>
+      <div class="slider">
+        <img src="slide1.webp" alt="MRI 1" />
+        <img src="slide2.webp" alt="MRI 2" />
+        <img src="slide 3.jpg" alt="MRI 3" />
+        <img src="slide 4.jpg" alt="MRI 4" />
+      </div>
+      <div id="auth-message" class="auth-message-box" style="display:none;"></div>
+      <div class="container" id="container">
+        <div class="form-container sign-up-container">
+          <form id="signUpForm">
+            <h1>Create Account</h1>
+            
+            <div class="social-container">
+               <a href="#" class="google-btn" id="googleSignUpBtn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google icon" class="google-icon">
+                <span>Sign up with Google</span>
+              </a>
+            </div>
+            <span>or use your email for registration</span>
+            <input type="text" id="signUpName" placeholder="Name" required />
+            <input type="email" id="signUpEmail" placeholder="Email" required />
+            <input type="password" id="signUpPassword" placeholder="Password" required />
+            <button type="submit">Sign Up</button>
+          </form>
+        </div>
+        <div class="form-container sign-in-container">
+          <form id="signInForm">
+            <h1>Sign In</h1>
+
+            <div class="social-container">
+               <a href="#" class="google-btn" id="googleSignInBtn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google icon" class="google-icon">
+                <span>Sign in with Google</span>
+              </a>
+            </div>
+            <span>or use your account</span>
+            <input type="email" id="signInEmail" placeholder="Email" required />
+            <input type="password" id="signInPassword" placeholder="Password" required />
+            <a href="#">Forgot your password?</a>
+            <button type="submit">Sign In</button>
+          </form>
+        </div>
+        <div class="overlay-container">
+          <div class="overlay">
+            <div class="overlay-panel overlay-left">
+              <h1>Welcome Back!</h1>
+              <p>Please login with your info</p>
+              <button class="ghost" id="signIn">Sign In</button>
+            </div>
+            <div class="overlay-panel overlay-right">
+              <h1>Hello, Friend!</h1>
+              <p>Enter your details and start your journey</p>
+              <button class="ghost" id="signUp">Sign Up</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="page" id="home-dashboard">
+      <div class="header">
+        <p class="welcome-greeting">Welcome, <span id="user-name-display">User</span>!</p>
+        <h1>Spinal Cord Tumor Detection</h1>
+        <p class="tagline">AI-Powered MRI Image Analysis</p>
+      </div>
+      <div class="slider">
+        <img src="slide1.webp" alt="MRI 1" />
+        <img src="slide2.webp" alt="MRI 2" />
+        <img src="slide 3.jpg" alt="MRI 3" />
+        <img src="slide 4.jpg" alt="MRI 4" />
+      </div>
+    </div>
+    
+    <div class="page" id="upload-page">
+      <div class="header">
+        <h1>Upload MRI</h1>
+      </div>
+      <div class="upload-box">
+        <div id="image-preview-container" class="image-preview-container" style="display: none;">
+          <img id="image-preview" src="#" alt="Image Preview" class="image-preview-box"/>
+          <button id="clear-button" class="clear-btn">&times;</button>
+        </div>
+        
+        <div id="segmentation-container" style="display: none;">
+            <h4>Tumor Segmentation</h4>
+            <img id="segmentation-image" src="#" alt="Segmentation Result" class="image-preview-box"/>
+        </div>
+        <div id="drop-zone" class="drop-zone">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Drag & Drop an image here, or click to select</p>
+          <input type="file" id="mriFileInput" class="file-input" accept="image/*">
+        </div>
+        <div id="loader" class="loader" style="display: none;"></div>
+        <button class="login-button" id="predictButton">Predict</button>
+        <div class="result" id="predictionResult">Upload an image to see the prediction.</div>
+        <button id="downloadPdfButton" style="display:none; margin-top: 20px;" class="login-button">Download Report as PDF</button>
+      </div>
+    </div>
+
+    <div class="page" id="team-page">
+      <div class="header">
+        <h1>Our Team</h1>
+        <p class="tagline">Meet the Creators</p>
+      </div>
+      <div class="gallery-photos">
+        <div class="creator-card" 
+             data-name="Venmugil Sruthi" 
+             data-img="https://via.placeholder.com/280x250/4a90e2/ffffff?text=Venmugil+Sruthi" 
+             data-bio="A passionate AI developer with a focus on computer vision and deep learning. She led the development of the core tumor detection model." 
+             data-skills="Deep Learning,Python,TensorFlow,Computer Vision" 
+             data-linkedin="https://www.linkedin.com/in/venmugil-sruthi-a747b0249/" 
+             data-github="https://github.com/VenmugilSruthi?tab=repositories">
+          <div class="card-image-container">
+            <img src="sruthi.jpg" class="creator-img" alt="Venmugil Sruthi"/>
+          </div>
+          <div class="card-info">
+            <h3 class="creator-name-visible">Venmugil Sruthi</h3>
+            <p class="creator-title">AI Developer</p>
+            <div class="social-links">
+              <a href="https://www.linkedin.com/in/venmugil-sruthi-a747b0249/" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+              <a href="https://github.com/VenmugilSruthi?tab=repositories" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+            </div>
+          </div>
+        </div>
+        <div class="creator-card" 
+             data-name="Vidhi Pant" 
+             data-img="https://via.placeholder.com/280x250/50c8a3/ffffff?text=Vidhi+Pant" 
+             data-bio="A creative UI/UX designer and front-end developer. She designed the user interface and ensured a seamless user experience across the platform." 
+             data-skills="UI/UX Design,JavaScript,HTML,CSS" 
+             data-linkedin="https://www.linkedin.com/in/vidhi-pant-748455228/" 
+             data-github="https://github.com/VidhiPant">
+          <div class="card-image-container">
+            <img src="vidhi.png" class="creator-img" alt="Vidhi Pant"/>
+          </div>
+          <div class="card-info">
+            <h3 class="creator-name-visible">Vidhi Pant</h3>
+            <p class="creator-title">UI/UX Designer</p>
+             <div class="social-links">
+              <a href="https://www.linkedin.com/in/vidhi-pant-748455228/" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+              <a href="https://github.com/VidhiPant" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="description">
+      <div class="header">
+        <h1>About This Project</h1>
+      </div>
+      <div class="text-box">
+        This model uses deep learning to detect spinal cord tumors from MRI scans. The analytics dashboard tracks recent predictions, providing an overview of model usage and results.
+      </div>
+      <div class="text-box">
+        <h1>Workflow Diagram</h1>
+        <img src="system design.png" class="creator-img" alt="System Design"/>
+      </div>
+    </div>
+
+    <div class="page" id="dashboard-page">
+      <div class="header">
+        <h1>Analytics Dashboard</h1>
+        <p class="tagline">Prediction Statistics Overview</p>
+      </div>
+      <div class="dashboard-content">
+        <div class="chart-container">
+          <h3>Prediction Summary</h3>
+          <canvas id="predictionsChart" width="400" height="300"></canvas>
+        </div>
+        <div class="table-container">
+          <h3>Recent Predictions</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Date</th><th>Filename</th><th>Result</th><th>Confidence</th></tr></thead>
+              <tbody id="predictions-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+      
+    <div class="page" id="profile-page">
+        <div class="header">
+            <h1>My Profile</h1>
+            <p class="tagline">Manage your account and view your history</p>
+        </div>
+        <div class="profile-header-card">
+            <div class="profile-picture-container">
+                <img src="user.jpg" alt="Profile Picture" id="profilePicture">
+                <label for="profilePictureInput" class="upload-pic-btn" title="Change profile picture"><i class="fas fa-camera"></i></label>
+                <input type="file" id="profilePictureInput" accept="image/*" style="display: none;">
+            </div>
+            <div class="profile-header-info">
+                <h2 id="profileHeaderName">User Name</h2>
+                <p id="profileHeaderEmail">user@example.com</p>
+            </div>
+        </div>
+        <div class="profile-tabs">
+            <button class="tab-link active" data-tab="details"><i class="fas fa-user-edit"></i> Account Details</button>
+            <button class="tab-link" data-tab="chat-history"><i class="fas fa-comments"></i> Chatbot History</button>
+        </div>
+        <div class="profile-tab-content">
+            <div id="details" class="tab-pane active">
+                <div class="profile-card">
+                    <h3>Your Details</h3>
+                    <form id="profile-details-form">
+                        <div class="input-group">
+                            <label for="profileName"><i class="fas fa-user"></i> Name</label>
+                            <input type="text" id="profileName" name="name" placeholder="Your Name" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="profileEmail"><i class="fas fa-envelope"></i> Email</label>
+                            <input type="email" id="profileEmail" name="email" placeholder="Your Email" disabled>
+                        </div>
+                        <button type="submit" class="login-button" style="width: 100%; margin-top: 15px;"><i class="fas fa-save"></i> Update Profile</button>
+                    </form>
+                </div>
+            </div>
+            <div id="chat-history" class="tab-pane">
+                <div class="profile-history-card">
+                    <h3><i class="fas fa-comments"></i> My Chatbot History</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Date</th><th>Your Question</th><th>Chatbot's Reply</th></tr></thead>
+                            <tbody id="chatbot-history-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div id="chatbot-container">
+      <div id="chatbot-button" onclick="toggleChat()">💬</div>
+      <div id="chatbox" style="display: none;">
+        <div id="chat-header">Ask Me Anything 🧠</div>
+        <div id="chat-content" class="chat-scroll">
+          <div class="chat-bot">Hi! I'm here to help you with questions about spinal tumor detection.</div>
+        </div>
+        <div id="chat-input-area">
+          <input type="text" id="userInput" placeholder="Type your question..." onkeypress="handleKeyPress(event)" />
+          <button onclick="processInput()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="team-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <img id="modal-img" src="" alt="Team Member" />
+        <h2 id="modal-name"></h2>
+        <p id="modal-bio"></p>
+        <h3>Skills</h3>
+        <div id="modal-skills" class="skill-tags"></div>
+        <h3>Connect</h3>
+        <div id="modal-social" class="social-links"></div>
+      </div>
+    </div>
+
+    
+</body>
+</html>

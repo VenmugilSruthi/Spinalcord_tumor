@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpinalScan AI - AI-Powered Tumor Detection</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+    <link rel="stylesheet" href="FRONTEND/landing.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="container">
+            <a href="#" class="logo">SpinalScan AI</a>
+            <nav>
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="FRONTEND/index.html" class="btn btn-primary">Sign In / Sign Up</a>
+            </nav>
+        </div>
+    </header>
+
+    <section id="hero">
+        <div class="hero-content" data-aos="fade-in" data-aos-duration="1500">
+            <h1>AI-Powered Spinal Analysis at Your Fingertips</h1>
+            <p>Leverage state-of-the-art deep learning to detect and visualize spinal tumors from MRI scans with high accuracy. Secure, fast, and insightful.</p>
+            
+        </div>
+    </section>
+
+    <section id="features" class="container">
+        <h2 data-aos="fade-up">Why Choose SpinalScan AI?</h2>
+        <div class="feature-cards">
+            <div class="card" data-aos="fade-up" data-aos-delay="100">
+                <i class="fas fa-brain"></i>
+                <h3>Instant Tumor Detection</h3>
+                <p>Our PyTorch model provides a fast and accurate binary classification for the presence of spinal tumors.</p>
+            </div>
+            <div class="card" data-aos="fade-up" data-aos-delay="200">
+                <i class="fas fa-draw-polygon"></i>
+                <h3>AI-ChatBot Feature</h3>
+                <p>Get instant answers to your questions about spinal tumors and our detection process, available 24/7.</p>
+            </div>
+            <div class="card" data-aos="fade-up" data-aos-delay="300">
+                <i class="fas fa-chart-pie"></i>
+                <h3>Analytics Dashboard</h3>
+                <p>Track your prediction history and view overall statistics in a clean, intuitive dashboard with downloadable reports.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="container">
+        <h2 data-aos="fade-up">Get Your Results in 3 Simple Steps</h2>
+        <div class="step-cards">
+            <div class="step-card" data-aos="fade-right">
+                <div class="step-number">1</div>
+                <h3>Upload Your MRI</h3>
+                <p>Securely upload your MRI scan through our intuitive and user-friendly interface. All common image formats are supported.</p>
+            </div>
+            <div class="step-card" data-aos="fade-up">
+                <div class="step-number">2</div>
+                <h3>Run AI Analysis</h3>
+                <p>Our system of advanced AI models processes the image in seconds, performing validation, detection, and segmentation.</p>
+            </div>
+            <div class="step-card" data-aos="fade-left">
+                <div class="step-number">3</div>
+                <h3>Review Your Report</h3>
+                <p>View the prediction results instantly, including the highlighted segmentation and a detailed downloadable PDF report.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 SpinalScan AI. All Rights Reserved. Created by Venmugil Sruthi & Vidhi Pant.</p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+    <script>
+      AOS.init({
+          once: true, // Whether animation should happen only once - while scrolling down
+          mirror: false, // Whether elements should animate out while scrolling past them
+      });
+    </script>
+</body>
+</html>
