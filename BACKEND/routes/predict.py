@@ -6,9 +6,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
 # ✅ Absolute imports (BACKEND is the top-level package)
-from BACKEND.model_loader import make_prediction
-from BACKEND.validator_loader import is_mri_scan
-from BACKEND.extensions import mongo
+from ..model_loader import make_prediction
+from ..validator_loader import is_mri_scan
+from ..extensions import mongo
 
 predict_bp = Blueprint("predict", __name__)
 
