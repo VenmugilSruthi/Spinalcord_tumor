@@ -17,7 +17,7 @@ from routes.profile import profile_bp
 def create_app():
     app = Flask(__name__)
     
-    # ✅ FIXED CORS Configuration
+    # ✅ Proper CORS Configuration
     CORS(
         app,
         origins=[
@@ -47,18 +47,7 @@ def create_app():
         except Exception as e:
             return jsonify({"status": "Backend is running but FAILED to connect to the database.", "error": str(e)}), 500
 
-    # ✅ Add explicit OPTIONS handling for preflight requests
-    @app.before_request
-    def handle_preflight():
-        from flask import request
-        if request.method == "OPTIONS":
-            response = jsonify({"status": "OK"})
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-            return response
-
-    # Register the blueprints
+    # ✅ Register the blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(predict_bp, url_prefix='/api/predict')
     app.register_blueprint(chatbot_bp, url_prefix='/api/chatbot')
