@@ -1,17 +1,14 @@
 # routes/predict.py
 import os
-import uuid
 import datetime
-import io
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from PIL import Image
 
-# --- CORRECTION: Use relative imports for modules in the parent directory ---
-from ..model_loader import make_prediction
-from ..validator_loader import is_mri_scan
-from ..extensions import mongo
+# ✅ Absolute imports (BACKEND is the top-level package)
+from BACKEND.model_loader import make_prediction
+from BACKEND.validator_loader import is_mri_scan
+from BACKEND.extensions import mongo
 
 predict_bp = Blueprint("predict", __name__)
 
@@ -29,37 +26,32 @@ def upload_file():
     image_bytes = file.read()
 
     try:
-        # Validate the image content with the real model
+        # Validate MRI scan
         is_valid_mri, confidence = is_mri_scan(image_bytes)
-        
         if not is_valid_mri:
             return jsonify({
-                "msg": f"Validation Error: The uploaded image is not a valid spinal cord MRI scan. Confidence: {confidence:.2f}%"
+                "msg": f"Validation Error: Not a valid spinal cord MRI scan. Confidence: {confidence:.2f}%"
             }), 400
         
-        # If validation passes, run the real tumor prediction
+        # Make prediction
         prediction_label, prediction_confidence = make_prediction(image_bytes)
-
-        # Convert the prediction from 0/1 to a human-readable string
         result = "Tumor Detected" if prediction_label == 1 else "No Tumor"
         confidence_percent = f"{prediction_confidence * 100:.2f}%"
         
-        # Create the prediction object to be sent back to the frontend
         prediction_result = {
             "result": result,
             "confidence": confidence_percent
         }
         
-        # Save the file (optional, for record keeping)
+        # Save uploaded file
         filename = secure_filename(file.filename)
         save_dir = "uploads"
         os.makedirs(save_dir, exist_ok=True)
         file_path = os.path.join(save_dir, filename)
-        
         with open(file_path, "wb") as f:
             f.write(image_bytes)
 
-        # SAVE PREDICTION TO MONGODB
+        # Save prediction to MongoDB
         user_id = get_jwt_identity()
         prediction_data = {
             "user_id": user_id,
@@ -73,52 +65,42 @@ def upload_file():
         return jsonify({"prediction": prediction_result, "record": prediction_data}), 200
 
     except Exception as e:
-        print(f"Error during prediction or validation: {e}")
+        print(f"Error during prediction: {e}")
         return jsonify({"msg": f"An error occurred on the server: {e}"}), 500
 
-# Stats endpoint (recent predictions)
+# --- Stats endpoint ---
 @predict_bp.route("/stats", methods=["GET"])
 @jwt_required()
 def stats():
     try:
         user_id = get_jwt_identity()
 
-        # FETCH REAL DATA FROM MONGODB
+        # Recent predictions
         recent_predictions = list(mongo.db.predictions.find(
             {"user_id": user_id},
             {"_id": 0}
         ).sort("date", -1).limit(20))
 
-        # Get total counts of predictions for the current user
+        # Totals
         total_counts = mongo.db.predictions.aggregate([
             {"$match": {"user_id": user_id}},
-            {"$group": {
-                "_id": "$result",
-                "count": {"$sum": 1}
-            }}
+            {"$group": {"_id": "$result", "count": {"$sum": 1}}}
         ])
 
-        tumor_count = 0
-        no_tumor_count = 0
+        tumor_count, no_tumor_count = 0, 0
         for item in total_counts:
-            if item['_id'] == 'Tumor Detected':
-                tumor_count = item['count']
+            if item["_id"] == "Tumor Detected":
+                tumor_count = item["count"]
             else:
-                no_tumor_count = item['count']
-        
-        # Format dates for the frontend
-        for pred in recent_predictions:
-            pred['date'] = pred['date'].strftime("%Y-%m-%d %H:%M:%S")
+                no_tumor_count = item["count"]
 
-        response_data = {
-            "total_counts": {
-                "tumor": tumor_count,
-                "no_tumor": no_tumor_count
-            },
+        for pred in recent_predictions:
+            pred["date"] = pred["date"].strftime("%Y-%m-%d %H:%M:%S")
+
+        return jsonify({
+            "total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count},
             "recent_predictions": recent_predictions
-        }
-        
-        return jsonify(response_data), 200
+        }), 200
 
     except Exception as e:
         print(f"Error fetching stats: {e}")
