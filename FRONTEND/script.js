@@ -1,17 +1,12 @@
 // ==========================================================
 // Spinal Tumor Detection - script.js (FULL & CORRECTED with Validation)
 // ==========================================================
-
-// --- START OF CORRECTION ---
-// Define your backend URL as a single constant here.
-// You confirmed this is your backend URL.
-const BACKEND_URL = "https://spinalcord-tumor.onrender.com";
-// --- END OF CORRECTION ---
+// Add this new function at the top of your script.js file
 
 function initializeGoogleSignIn() {
   google.accounts.id.initialize({
     client_id: "556631616994-pul2e57kp0oblfsddj3uslophlrc9v5a.apps.googleusercontent.com",
-    callback: handleGoogleCredentialResponse, // The function that handles the login response
+    callback: handleGoogleCredentialResponse // The function that handles the login response
   });
 }
 // Global variables
@@ -25,8 +20,15 @@ async function authFetch(url, options = {}) {
   const token = getToken();
   const headers = new Headers(options.headers || {});
   if (token) headers.set("Authorization", "Bearer " + token);
-  return fetch(url, { ...options, headers });
+
+  return fetch(url, {
+    ...options,
+    headers,
+    mode: "cors",            // ✅ enforce CORS
+    credentials: "include"   // ✅ required since backend uses supports_credentials=True
+  });
 }
+
 
 function handleUnauthorized(res) {
   if (res.status === 401 || res.status === 403) {
@@ -43,13 +45,11 @@ async function handleGoogleCredentialResponse(response) {
 
   // Send the token to your backend
   try {
-    // --- CORRECTION: Using the BACKEND_URL variable ---
-    const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
+    const res = await fetch("https://spinalcord-tumor.onrender.com/api/auth/google-login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: response.credential }),
+      body: JSON.stringify({ token: response.credential })
     });
-    // --- END OF CORRECTION ---
 
     const data = await res.json();
 
@@ -63,11 +63,12 @@ async function handleGoogleCredentialResponse(response) {
       // This assumes showAppView is accessible in the global scope or defined earlier
       const mainAppLoader = document.querySelector('body[data-show-app-view]');
       if (mainAppLoader) {
-        window[mainAppLoader.dataset.showAppView]();
+          window[mainAppLoader.dataset.showAppView]();
       } else {
-        // Fallback if the above method isn't set up: just reload
-        window.location.reload();
+          // Fallback if the above method isn't set up: just reload
+          window.location.reload();
       }
+
     } else {
       // If the backend returned an error
       alert(data.msg || "Google login failed on the server.");
@@ -98,13 +99,11 @@ async function processInput() {
   userInput.value = "";
 
   try {
-    // --- CORRECTION: Using the BACKEND_URL variable ---
-    const response = await authFetch(`${BACKEND_URL}/api/chatbot/ask`, {
+    const response = await authFetch("https://spinalcord-tumor.onrender.com/api/chatbot/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, question: query }),
+      body: JSON.stringify({ userId, question: query })
     });
-    // --- END OF CORRECTION ---
 
     if (!response.ok) {
       if (handleUnauthorized(response)) return;
@@ -138,12 +137,10 @@ async function updateDashboard() {
   }
 
   try {
-    // --- CORRECTION: Using the BACKEND_URL variable ---
-    const res = await authFetch(`${BACKEND_URL}/api/predict/stats`, {
+    const res = await authFetch("https://spinalcord-tumor.onrender.com/api/predict/stats", {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" }
     });
-    // --- END OF CORRECTION ---
 
     if (!res.ok) {
       if (handleUnauthorized(res)) return;
@@ -182,9 +179,9 @@ async function updateDashboard() {
           data: [data.total_counts.tumor, data.total_counts.no_tumor],
           backgroundColor: ["rgba(255, 99, 132, 0.5)", "rgba(75, 192, 192, 0.5)"],
           borderColor: ["rgba(255, 99, 132, 1)", "rgba(75, 192, 192, 1)"],
-          borderWidth: 1,
-        },
-      ],
+          borderWidth: 1
+        }
+      ]
     };
 
     if (predictionsChart) {
@@ -197,8 +194,8 @@ async function updateDashboard() {
         options: {
           scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
           responsive: true,
-          maintainAspectRatio: false,
-        },
+          maintainAspectRatio: false
+        }
       });
     }
   } catch (error) {
@@ -211,20 +208,18 @@ async function updateDashboard() {
 // **IMPROVEMENT**: This new function calls the Profile Manager
 // It replaces the old, redundant function
 async function loadUserProfile() {
-  if (profileManager) {
-    await profileManager.loadData();
-  }
+    if (profileManager) {
+        await profileManager.loadData();
+    }
 }
 
 // ---------- Chat History ----------
 async function loadChatHistory() {
   const userId = localStorage.getItem("username") || "guest";
   try {
-    // --- CORRECTION: Using the BACKEND_URL variable ---
-    const res = await authFetch(`${BACKEND_URL}/api/chatbot/history`, {
-      method: "GET",
+    const res = await authFetch("https://spinalcord-tumor.onrender.com/api/chatbot/history", {
+      method: "GET"
     });
-    // --- END OF CORRECTION ---
 
     if (!res.ok) {
       if (handleUnauthorized(res)) return;
@@ -270,14 +265,14 @@ function showPage(pageId, element) {
     .querySelectorAll(".sidebar a")
     .forEach((link) => link.classList.remove("active"));
   if (element) element.classList.add("active");
-
+  
   // Slider fix
-  if (pageId === "home-dashboard") {
-    try {
-      $("#home-dashboard .slider").slick("setPosition");
-    } catch (e) {
-      console.error("Could not reposition Slick slider:", e);
-    }
+  if (pageId === 'home-dashboard') {
+      try {
+        $('#home-dashboard .slider').slick('setPosition');
+      } catch (e) {
+        console.error("Could not reposition Slick slider:", e);
+      }
   }
 
   if (pageId === "dashboard-page") updateDashboard();
@@ -304,7 +299,7 @@ function toggleTheme() {
         autoplaySpeed: 2500,
         dots: false,
         arrows: false,
-        fade: true,
+        fade: true
       });
     });
   }
@@ -342,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const name = localStorage.getItem("username") || "";
     const nameDisplay = document.getElementById("user-name-display");
     if (nameDisplay) nameDisplay.textContent = name;
-
+    
     document.querySelector('body').dataset.showAppView = 'showAppView';
 
     showPage("home-dashboard", document.querySelector(".sidebar a"));
@@ -412,13 +407,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const password = document.getElementById("signUpPassword").value;
 
     try {
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
+      const res = await fetch("https://spinalcord-tumor.onrender.com/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password })
       });
-      // --- END OF CORRECTION ---
       const data = await res.json();
       if (res.ok) {
         showAuthMessage("Registration successful! Please sign in.");
@@ -437,13 +430,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = document.getElementById("signInEmail").value;
     const password = document.getElementById("signInPassword").value;
     try {
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+      const res = await fetch("https://spinalcord-tumor.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password })
       });
-      // --- END OF CORRECTION ---
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.token);
@@ -464,18 +455,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
     if (!allowedExtensions.exec(file.name)) {
-      predictionResult.textContent = "Warning: For best results, please upload a standard image file (JPG, PNG).";
-      predictionResult.className = "result error";
+        predictionResult.textContent = "Warning: For best results, please upload a standard image file (JPG, PNG).";
+        predictionResult.className = "result error";
     } else if (!file.type.startsWith("image/")) {
-      predictionResult.textContent = "Invalid file type. Please select a valid image.";
-      predictionResult.className = "result error";
-      mriFileInput.value = "";
-      return;
+        predictionResult.textContent = "Invalid file type. Please select a valid image.";
+        predictionResult.className = "result error";
+        mriFileInput.value = "";
+        return;
     } else {
-      predictionResult.textContent = "Upload an image to see the prediction.";
-      predictionResult.className = "result";
+        predictionResult.textContent = "Upload an image to see the prediction.";
+        predictionResult.className = "result";
     }
-
+    
     currentFile = file;
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -502,7 +493,9 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     dropZone.classList.add("drag-over");
   });
-  dropZone?.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone?.addEventListener("dragleave", () =>
+    dropZone.classList.remove("drag-over")
+  );
   dropZone?.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("drag-over");
@@ -527,12 +520,10 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("mriScan", currentFile);
 
     try {
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const res = await authFetch(`${BACKEND_URL}/api/predict/upload`, {
+      const res = await authFetch("https://spinalcord-tumor.onrender.com/api/predict/upload", {
         method: "POST",
-        body: formData,
+        body: formData
       });
-      // --- END OF CORRECTION ---
 
       const data = await res.json();
 
@@ -548,16 +539,17 @@ document.addEventListener("DOMContentLoaded", () => {
           filename: currentFile.name,
           result: data.prediction.result,
           confidence: data.prediction.confidence,
-          date: new Date().toLocaleString(),
+          date: new Date().toLocaleString()
         });
         localStorage.setItem("predictionHistory", JSON.stringify(history.slice(0, 20)));
+      
       } else {
         if (handleUnauthorized(res)) return;
-
+        
         if (data.msg && data.msg.includes("Validation Error")) {
-          predictionResult.textContent = data.msg;
+            predictionResult.textContent = data.msg;
         } else {
-          predictionResult.textContent = `Error: ${data.msg || "Prediction failed."}`;
+            predictionResult.textContent = `Error: ${data.msg || "Prediction failed."}`;
         }
         predictionResult.className = "result error";
       }
@@ -569,7 +561,7 @@ document.addEventListener("DOMContentLoaded", () => {
       predictButton.disabled = false;
     }
   });
-
+  
   // Download PDF
   downloadPdfButton?.addEventListener("click", function () {
     const { jsPDF } = window.jspdf || {};
@@ -617,7 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pred.filename,
         pred.result,
         pred.confidence,
-        pred.date,
+        pred.date
       ]);
       if (doc.autoTable) {
         doc.autoTable({
@@ -625,7 +617,7 @@ document.addEventListener("DOMContentLoaded", () => {
           body: rows,
           startY: 185,
           styles: { fontSize: 11, cellPadding: 3 },
-          headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+          headStyles: { fillColor: [41, 128, 185], textColor: 255 }
         });
       }
     }
@@ -634,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
     doc.text(
       "Disclaimer: This report is generated by an AI model and should be reviewed by a medical professional.",
       14,
-      285,
+      285
     );
     doc.save(`Spinal_Tumor_Report_${reportId}.pdf`);
   });
@@ -668,6 +660,7 @@ document.querySelectorAll(".tab-link").forEach((button) => {
   });
 });
 
+
 // **IMPROVEMENT**: Fully integrated ProfilePhotoManager class
 class ProfilePhotoManager {
   constructor() {
@@ -691,25 +684,23 @@ class ProfilePhotoManager {
     try {
       const userEmail = localStorage.getItem('email');
       if (!userEmail) {
-        console.error("No user email found in localStorage.");
-        return;
+          console.error("No user email found in localStorage.");
+          return;
       }
       this.currentUserEmail = userEmail;
-
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const response = await authFetch(`${BACKEND_URL}/api/profile/${userEmail}`);
-      // --- END OF CORRECTION ---
-
+      
+      const response = await authFetch(`https://spinalcord-tumor.onrender.com/api/profile/${userEmail}`);
+      
       if (response.ok) {
         const userData = await response.json();
         this.populateUserData(userData);
       } else {
-        console.error('Failed to load user profile data from server. Falling back to localStorage.');
-        this.populateUserData({
-          name: localStorage.getItem("username"),
-          email: localStorage.getItem("email"),
-          profilePhoto: null,
-        });
+          console.error('Failed to load user profile data from server. Falling back to localStorage.');
+          this.populateUserData({
+              name: localStorage.getItem("username"),
+              email: localStorage.getItem("email"),
+              profilePhoto: null
+          });
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -720,14 +711,14 @@ class ProfilePhotoManager {
   populateUserData(userData) {
     const defaultPic = 'user.jpg';
     if (this.profilePicture) {
-      this.profilePicture.src = userData.profilePhoto || defaultPic;
+        this.profilePicture.src = userData.profilePhoto || defaultPic;
     }
-
+    
     const nameField = document.getElementById('profileName');
     const emailField = document.getElementById('profileEmail');
     const headerName = document.getElementById('profileHeaderName');
     const headerEmail = document.getElementById('profileHeaderEmail');
-
+    
     if (nameField) nameField.value = userData.name || '';
     if (emailField) emailField.value = userData.email || '';
     if (headerName) headerName.textContent = userData.name || 'User Name';
@@ -745,7 +736,7 @@ class ProfilePhotoManager {
       this.showMessage('Please select a valid image file', 'error');
       return;
     }
-
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       if (this.profilePicture) {
@@ -753,7 +744,7 @@ class ProfilePhotoManager {
       }
     };
     reader.readAsDataURL(file);
-
+    
     await this.uploadPhotoToServer(file);
   }
 
@@ -764,13 +755,11 @@ class ProfilePhotoManager {
       formData.append('profilePicture', file);
       formData.append('userEmail', this.currentUserEmail);
 
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const response = await authFetch(`${BACKEND_URL}/api/profile/upload-photo`, {
+      const response = await authFetch('https://spinalcord-tumor.onrender.com/api/profile/upload-photo', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
-      // --- END OF CORRECTION ---
-
+      
       const result = await response.json();
       if (response.ok && result.success) {
         this.showMessage('Profile picture updated successfully!', 'success');
@@ -790,35 +779,34 @@ class ProfilePhotoManager {
     event.preventDefault();
     const nameField = document.getElementById('profileName');
     if (!nameField) return;
-
+    
     const updateData = {
       name: nameField.value,
-      currentUserEmail: this.currentUserEmail,
+      currentUserEmail: this.currentUserEmail
     };
-
+    
     try {
       this.showMessage('Updating profile...', 'info');
-      // --- CORRECTION: Using the BACKEND_URL variable ---
-      const response = await authFetch(`${BACKEND_URL}/api/profile/update`, {
+      const response = await authFetch('https://spinalcord-tumor.onrender.com/api/profile/update', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify(updateData)
       });
-      // --- END OF CORRECTION ---
-
+      
       const result = await response.json();
       if (response.ok && result.success) {
         this.showMessage('Profile updated successfully!', 'success');
-
+        
         localStorage.setItem('username', updateData.name);
-
+        
         const headerName = document.getElementById('profileHeaderName');
         const welcomeName = document.getElementById('user-name-display');
-
+        
         if (headerName) headerName.textContent = updateData.name;
         if (welcomeName) welcomeName.textContent = updateData.name;
+
       } else {
         this.showMessage(result.error || 'Update failed', 'error');
       }
