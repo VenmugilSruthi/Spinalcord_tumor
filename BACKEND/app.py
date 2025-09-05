@@ -24,7 +24,6 @@ def create_app():
             "https://spinalcord-tumor-1.onrender.com",  # Your frontend domain
             "http://localhost:3000",                    # Local React dev
             "http://localhost:5173",                    # Local Vite dev
-            "*"                                         # Allow all for testing
         ],
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
