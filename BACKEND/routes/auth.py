@@ -1,13 +1,13 @@
 # routes/auth.py
 import os
 from flask import Blueprint, request, jsonify
-# --- CORRECTION: Use a dot to access the package directly ---
-from .extensions import mongo
-# --- END OF CORRECTION ---
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
 from google.oauth2 import id_token
 from google.auth.transport import requests
+
+# ✅ Correct import (since extensions.py is in BACKEND folder, not in routes/)
+from BACKEND.extensions import mongo  
 
 auth_bp = Blueprint('auth_bp', __name__)
 
