@@ -4,11 +4,11 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 
-# Blueprints
-from auth import auth_bp
-from chatbot import chatbot_bp
-from predict import predict_bp
-from profile import profile_bp
+# Blueprints (use routes. prefix)
+from routes.auth import auth_bp
+from routes.chatbot import chatbot_bp
+from routes.predict import predict_bp
+from routes.profile import profile_bp
 
 # Initialize app
 app = Flask(__name__)
@@ -20,15 +20,16 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 jwt = JWTManager(app)
 
 # ✅ Correct CORS setup
-CORS(app,
-     origins=[
-         "https://spinalcord-tumor-1.onrender.com",   # frontend deployed on Render
-         "http://localhost:3000",                     # local React
-         "http://localhost:5173"                      # local Vite
-     ],
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+CORS(
+    app,
+    origins=[
+        "https://spinalcord-tumor-1.onrender.com",   # frontend deployed on Render
+        "http://localhost:3000",                     # local React
+        "http://localhost:5173"                      # local Vite
+    ],
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
 # Register blueprints
