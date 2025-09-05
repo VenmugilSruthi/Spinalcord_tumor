@@ -1,10 +1,12 @@
-# In routes/profile.py
+# routes/profile.py
 
 import os
 from flask import Blueprint, request, jsonify, url_for, current_app
 from werkzeug.utils import secure_filename
-from extensions import mongo
 from flask_jwt_extended import jwt_required
+
+# ✅ Use absolute import for Render deployment
+from BACKEND.extensions import mongo
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -24,7 +26,11 @@ def get_user_profile(email):
             profile_info = {
                 'name': user_data.get('name'),
                 'email': user_data.get('email'),
-                'profilePhoto': url_for('static', filename=f'profile_pics/{user_data.get("profilePhoto")}', _external=True) if user_data.get("profilePhoto") else None
+                'profilePhoto': url_for(
+                    'static',
+                    filename=f'profile_pics/{user_data.get("profilePhoto")}',
+                    _external=True
+                ) if user_data.get("profilePhoto") else None
             }
             return jsonify(profile_info), 200
         else:
@@ -61,7 +67,11 @@ def upload_profile_photo():
             {'$set': {'profilePhoto': unique_filename}}
         )
 
-        photo_url = url_for('static', filename=f'profile_pics/{unique_filename}', _external=True)
+        photo_url = url_for(
+            'static',
+            filename=f'profile_pics/{unique_filename}',
+            _external=True
+        )
 
         return jsonify({'success': True, 'photoUrl': photo_url}), 200
     else:
