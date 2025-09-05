@@ -1,7 +1,11 @@
+import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+
+# Extensions
+from extensions import mongo
 
 # Blueprints
 from routes.auth import auth_bp
@@ -11,12 +15,17 @@ from routes.profile import profile_bp
 
 def create_app():
     app = Flask(__name__)
-    
+
     # JWT configuration
     app.config["JWT_SECRET_KEY"] = "your-secret-key"  # ⚠️ change this in production
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
+    # ✅ MongoDB configuration
+    app.config["MONGO_URI"] = os.getenv("MONGO_URI")  # must be set in Render Environment
+
+    # Initialize extensions
     jwt = JWTManager(app)
+    mongo.init_app(app)   # ✅ this was missing before
 
     # ✅ CORS
     CORS(
@@ -40,7 +49,16 @@ def create_app():
     # Root route
     @app.route("/")
     def home():
-        return jsonify({"status": "Backend is running and CONNECTED to the database!"})
+        return jsonify({"status": "Backend is running!"})
+
+    # ✅ Database health check
+    @app.route("/dbcheck")
+    def dbcheck():
+        try:
+            mongo.db.command("ping")
+            return jsonify({"status": "MongoDB connected ✅"})
+        except Exception as e:
+            return jsonify({"status": "MongoDB connection failed ❌", "error": str(e)}), 500
 
     return app
 
