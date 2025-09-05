@@ -4,6 +4,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import io
 
 # Import the prediction function from your model_loader.py file.
 # The `model_loader.py` file already handles loading the model onto the CPU.
@@ -12,27 +13,29 @@ from model_loader import make_prediction
 # --- Initialize Flask App ---
 app = Flask(__name__)
 
-# Enables CORS for all routes, which is necessary for a separate frontend.
-CORS(app) 
+# Enables CORS for the specific frontend origin.
+# This is the most reliable way to handle cross-origin requests.
+CORS(app, origins="https://spinalcord-tumor-1.onrender.com")
 
 # --- Routes ---
 
 # @app.route('/api/auth/login', methods=['POST'])
 # def login():
-#    # Your login logic here
-#    ...
+#     # Your login logic here
+#     ...
 
 # @app.route('/api/chatbot/ask', methods=['POST'])
 # def chatbot_ask():
-#    # Your chatbot logic here
-#    ...
+#     # Your chatbot logic here
+#     ...
 
 # @app.route('/api/predict/stats', methods=['GET'])
 # def predict_stats():
-#    # Your stats logic here
-#    ...
+#     # Your stats logic here
+#     ...
 
-# --- Corrected Prediction Route ---
+
+# --- The Corrected Prediction Route ---
 @app.route('/api/predict/upload', methods=['POST'])
 def predict_tumor():
     """
