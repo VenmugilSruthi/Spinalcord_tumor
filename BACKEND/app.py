@@ -29,7 +29,8 @@ async function uploadMRI(file) {
   const response = await fetch("https://spinalcord-tumor.onrender.com/api/predict/upload", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token  // ✅ attach token
+      "Authorization": "Bearer " + token  # ✅ attach token
+
     },
     body: formData
   });
