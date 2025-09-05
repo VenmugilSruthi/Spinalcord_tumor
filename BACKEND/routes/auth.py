@@ -7,7 +7,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 
 # ✅ Correct import (since extensions.py is in BACKEND folder, not in routes/)
-from BACKEND.extensions import mongo  
+from ..extensions import mongo
 
 auth_bp = Blueprint('auth_bp', __name__)
 
