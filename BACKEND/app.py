@@ -1,4 +1,4 @@
-// Example: Save token after login
+#Example: Save token after login
 async function loginUser(email, password) {
   const response = await fetch("https://spinalcord-tumor.onrender.com/api/auth/login", {
     method: "POST",
@@ -15,7 +15,7 @@ async function loginUser(email, password) {
   }
 }
 
-// Upload MRI scan with token
+# Upload MRI scan with token
 async function uploadMRI(file) {
   const token = localStorage.getItem("token");
   if (!token) {
