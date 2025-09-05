@@ -1,3 +1,4 @@
+# routes/auth.py
 import os
 from flask import Blueprint, request, jsonify
 from extensions import mongo
@@ -84,4 +85,3 @@ def login():
         return jsonify(token=access_token, user={'name': user['name'], 'email': user['email']})
 
     return jsonify({"msg": "Bad email or password"}), 401
-
