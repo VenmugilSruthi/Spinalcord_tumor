@@ -1,128 +1,74 @@
+# predict.py
+import os
+import uuid
+import datetime
 from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime
-from extensions import mongo
-from model_loader import make_prediction
-import torch
-import torchvision.models as models
-from torchvision import transforms
-from PIL import Image
-import io
+from werkzeug.utils import secure_filename
 
-# --- Constants (must match training) ---
-DATASET_MEAN = 0.3247
-DATASET_STD = 0.2072
+predict_bp = Blueprint("predict", __name__)
 
-# --- Load the MRI Validator Model ---
-validator_model = models.resnet18()
-validator_model.fc = torch.nn.Linear(validator_model.fc.in_features, 1)
-try:
-    validator_model.load_state_dict(torch.load('mri_validator.pth', map_location=torch.device('cpu')))
-    validator_model.eval()
-    print("✅ MRI Validator model loaded successfully.")
-except FileNotFoundError:
-    print("🔴 WARNING: 'mri_validator.pth' not found. Image validation will be skipped.")
-    validator_model = None
+# Fake model prediction (replace with real ML model later)
+def fake_model_predict(file_path):
+    # Here you can load your ML/DL model and do prediction
+    import random
+    result = random.choice(["Tumor Detected", "No Tumor"])
+    confidence = round(random.uniform(70, 99), 2)
+    return {"result": result, "confidence": f"{confidence}%"}
 
-# --- Robust Image Transformations (must match training) ---
-validator_transforms = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1),
-    transforms.ToTensor(),
-    transforms.Normalize([DATASET_MEAN], [DATASET_STD]),
-    transforms.Resize((224, 224), antialias=True),
-    transforms.Lambda(lambda x: x.repeat(3, 1, 1))
-])
-
-def is_image_mri(image_bytes):
-    """Validate if the uploaded file looks like an MRI scan."""
-    if not validator_model:
-        return True
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-        image_tensor = validator_transforms(image).unsqueeze(0)
-        with torch.no_grad():
-            output = validator_model(image_tensor)
-            probability = torch.sigmoid(output).item()
-        print(f"🔬 MRI Validation Check - Probability: {probability:.4f}")
-        # Model learned MRI = class 0, so probability < 0.5 means MRI
-        return probability < 0.5
-    except Exception as e:
-        print(f"Error during MRI validation: {e}")
-        return False
-
-# --- Blueprint setup ---
-predict_bp = Blueprint('predict', __name__)
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# ✅ Prediction Upload Route
-@predict_bp.route('/upload', methods=['POST'])
+# Upload MRI for prediction
+@predict_bp.route("/upload", methods=["POST"])
 @jwt_required()
 def upload_file():
-    if 'mriScan' not in request.files:
-        return jsonify({'msg': 'No file part in the request'}), 400
+    if "mriScan" not in request.files:
+        return jsonify({"msg": "No file part"}), 400
     
-    file = request.files['mriScan']
-    if file.filename == '':
-        return jsonify({'msg': 'No file selected'}), 400
+    file = request.files["mriScan"]
+    if file.filename == "":
+        return jsonify({"msg": "No selected file"}), 400
 
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        image_bytes = file.read()
+    filename = secure_filename(file.filename)
+    save_dir = "uploads"
+    os.makedirs(save_dir, exist_ok=True)
+    file_path = os.path.join(save_dir, filename)
+    file.save(file_path)
 
-        # Validate MRI
-        if not is_image_mri(image_bytes):
-            return jsonify({'msg': "Validation Error: The uploaded image does not appear to be a medical MRI scan. Please upload a relevant image."}), 400
+    # Run prediction
+    prediction = fake_model_predict(file_path)
 
-        # Run prediction
-        prediction_label, probability = make_prediction(image_bytes)
-        if prediction_label is None:
-            return jsonify({'msg': 'Error processing the image'}), 500
+    # Save record in memory (later replace with DB)
+    record = {
+        "id": str(uuid.uuid4()),
+        "user": get_jwt_identity(),
+        "filename": filename,
+        "result": prediction["result"],
+        "confidence": prediction["confidence"],
+        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
-        result_text = "Tumor Detected" if prediction_label == 1 else "No Tumor"
-        confidence_str = f"{probability:.2%}"
+    # For now, return directly
+    return jsonify({"prediction": prediction, "record": record}), 200
 
-        # Save to MongoDB
-        mongo.db.predictions.insert_one({
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "filename": filename,
-            "result": result_text,
-            "confidence": confidence_str,
-            "user": get_jwt_identity()
-        })
-
-        return jsonify({
-            'fileName': filename,
-            'prediction': {
-                'result': result_text,
-                'confidence': confidence_str
-            }
-        }), 200
-    else:
-        return jsonify({'msg': 'File type not allowed'}), 400
-
-# ✅ Stats Route
-@predict_bp.route('/stats', methods=['GET'])
+# Stats endpoint (recent predictions)
+@predict_bp.route("/stats", methods=["GET"])
 @jwt_required()
-def get_stats():
-    user = get_jwt_identity()
-    preds = list(mongo.db.predictions.find({"user": user}).sort("date", -1).limit(20))
-    tumor_count = mongo.db.predictions.count_documents({"user": user, "result": "Tumor Detected"})
-    no_tumor_count = mongo.db.predictions.count_documents({"user": user, "result": "No Tumor"})
-
-    formatted_preds = [
-        {
-            "date": p["date"],
-            "filename": p["filename"],
-            "result": p["result"],
-            "confidence": p["confidence"]
-        } for p in preds
-    ]
-
-    return jsonify({
-        "total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count},
-        "recent_predictions": formatted_preds
-    }), 200
+def stats():
+    # Replace with DB query in future
+    dummy_data = {
+        "total_counts": {"tumor": 5, "no_tumor": 7},
+        "recent_predictions": [
+            {
+                "date": "2025-09-05 10:00:00",
+                "filename": "scan1.png",
+                "result": "Tumor Detected",
+                "confidence": "95%"
+            },
+            {
+                "date": "2025-09-05 09:30:00",
+                "filename": "scan2.png",
+                "result": "No Tumor",
+                "confidence": "88%"
+            }
+        ]
+    }
+    return jsonify(dummy_data), 200
