@@ -93,9 +93,9 @@ def login():
         logging.error(f"Error in login: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-# ==========================================================
-# FIX #1: PROFILE ENDPOINT
-# ==========================================================
+# -----------------------
+# Profile: Get User Data endpoint
+# -----------------------
 @app.route("/api/profile/<string:email>", methods=["GET"])
 @jwt_required()
 def get_profile_by_email(email):
@@ -117,9 +117,9 @@ def get_profile_by_email(email):
         logging.error(f"Error fetching profile by email: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-# ==========================================================
-# FIX #2: SAVE PREDICTIONS TO DATABASE
-# ==========================================================
+# -----------------------
+# Prediction: Upload MRI scan and save result
+# -----------------------
 @app.route("/api/predict/upload", methods=["POST"])
 @jwt_required()
 def upload_mri():
@@ -135,7 +135,6 @@ def upload_mri():
     # --- TODO: Replace with your actual ML model logic ---
     prediction_result = {"result": "Tumor Detected", "confidence": "95.0%"}
 
-    # --- SAVE PREDICTION TO DB ---
     try:
         predictions_collection.insert_one({
             "userId": ObjectId(current_user_id),
@@ -149,16 +148,15 @@ def upload_mri():
     
     return jsonify({"prediction": prediction_result}), 200
 
-# ==========================================================
-# FIX #3: DASHBOARD STATS ENDPOINT
-# ==========================================================
+# -----------------------
+# Dashboard: Get prediction statistics
+# -----------------------
 @app.route("/api/predict/stats", methods=["GET"])
 @jwt_required()
 def get_prediction_stats():
     try:
         current_user_id = get_jwt_identity()
         
-        # Fetch recent predictions for the current user
         cursor = predictions_collection.find(
             {"userId": ObjectId(current_user_id)}
         ).sort("timestamp", -1).limit(10)
@@ -170,7 +168,6 @@ def get_prediction_stats():
             "confidence": pred.get("confidence")
         } for pred in cursor]
 
-        # Calculate total counts
         tumor_count = predictions_collection.count_documents({
             "userId": ObjectId(current_user_id), "result": "Tumor Detected"
         })
@@ -184,6 +181,61 @@ def get_prediction_stats():
         }), 200
     except Exception as e:
         logging.error(f"Error fetching prediction stats: {e}")
+        return jsonify({"msg": "An internal error occurred"}), 500
+
+# ==========================================================
+# CHATBOT 'ASK' ENDPOINT
+# ==========================================================
+@app.route("/api/chatbot/ask", methods=["POST"])
+@jwt_required()
+def ask_chatbot():
+    try:
+        data = request.get_json()
+        question = data.get("question")
+        if not question:
+            return jsonify({"msg": "No question provided"}), 400
+        
+        current_user_id = get_jwt_identity()
+        
+        # --- TODO: Replace with actual AI/NLP logic ---
+        # For now, we provide a simple, static answer.
+        answer = f"Thank you for asking about '{question}'. This is a placeholder response. For medical advice, please consult a professional."
+
+        # Save the conversation to history
+        chatbot_collection.insert_one({
+            "userId": ObjectId(current_user_id),
+            "question": question,
+            "answer": answer,
+            "timestamp": datetime.now(timezone.utc)
+        })
+        
+        return jsonify({"answer": answer}), 200
+    except Exception as e:
+        logging.error(f"Error in chatbot ask endpoint: {e}")
+        return jsonify({"msg": "An internal error occurred"}), 500
+
+# ==========================================================
+# CHATBOT HISTORY ENDPOINT
+# ==========================================================
+@app.route("/api/chatbot/history", methods=["GET"])
+@jwt_required()
+def get_chat_history():
+    try:
+        current_user_id = get_jwt_identity()
+        
+        cursor = chatbot_collection.find(
+            {"userId": ObjectId(current_user_id)}
+        ).sort("timestamp", -1)
+
+        history = [{
+            "question": chat.get("question"),
+            "answer": chat.get("answer"),
+            "timestamp": chat.get("timestamp").strftime("%Y-%m-%d %H:%M")
+        } for chat in cursor]
+        
+        return jsonify(history), 200
+    except Exception as e:
+        logging.error(f"Error fetching chat history: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
 # -----------------------
