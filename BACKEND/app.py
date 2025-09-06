@@ -9,12 +9,22 @@ app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
 
+# -----------------------
 # MongoDB setup
-app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb://localhost:27017/spinalcord")
+# -----------------------
+app.config["MONGO_URI"] = os.environ.get(
+    "MONGO_URI",
+    "mongodb://localhost:27017/spinalcord"
+)
 mongo = PyMongo(app)
 
+# -----------------------
 # JWT setup
-app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "super-secret-key")
+# -----------------------
+app.config["JWT_SECRET_KEY"] = os.environ.get(
+    "JWT_SECRET_KEY",
+    "super-secret-key"
+)
 jwt = JWTManager(app)
 
 # -----------------------
@@ -30,6 +40,7 @@ def login():
     if user and bcrypt.check_password_hash(user["password"], password):
         access_token = create_access_token(identity=str(user["_id"]))
         return jsonify({"token": access_token}), 200
+
     return jsonify({"msg": "Invalid credentials"}), 401
 
 # -----------------------
@@ -47,17 +58,13 @@ def upload_mri():
     os.makedirs("uploads", exist_ok=True)
     file.save(filepath)
 
-    # TODO: Insert your MRI prediction logic here
-    # For example, call your ML model and return prediction
-    prediction_result = {"result": "tumor", "confidence": 0.95}  # example
+    # TODO: Replace with your ML model logic
+    prediction_result = {"result": "tumor", "confidence": 0.95}
 
     return jsonify({"prediction": prediction_result}), 200
 
 # -----------------------
 # Run app
 # -----------------------
-def create_app():
-    return app
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
