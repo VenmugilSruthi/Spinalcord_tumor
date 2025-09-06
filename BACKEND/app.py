@@ -3,7 +3,13 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
 from flask_pymongo import PyMongo
+from dotenv import load_dotenv
 import os
+
+# -----------------------
+# Load .env variables (optional, for local testing)
+# -----------------------
+load_dotenv()
 
 # -----------------------
 # Create Flask app
@@ -15,19 +21,18 @@ bcrypt = Bcrypt(app)
 # -----------------------
 # MongoDB setup
 # -----------------------
-app.config["MONGO_URI"] = os.environ.get(
-    "MONGO_URI",
-    "mongodb://localhost:27017/spinalcord"
-)
+MONGO_URI = os.environ.get("MONGO_URI")
+if not MONGO_URI:
+    raise ValueError("MONGO_URI environment variable not set")
+
+app.config["MONGO_URI"] = MONGO_URI
 mongo = PyMongo(app)
 
 # -----------------------
 # JWT setup
 # -----------------------
-app.config["JWT_SECRET_KEY"] = os.environ.get(
-    "JWT_SECRET_KEY",
-    "super-secret-key"
-)
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key")
+app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 jwt = JWTManager(app)
 
 # -----------------------
@@ -39,8 +44,8 @@ def login():
     if not data or "email" not in data or "password" not in data:
         return jsonify({"msg": "Email and password required"}), 400
 
-    email = data.get("email")
-    password = data.get("password")
+    email = data["email"]
+    password = data["password"]
 
     user = mongo.db.users.find_one({"email": email})
     if user and bcrypt.check_password_hash(user["password"], password):
@@ -72,7 +77,7 @@ def upload_mri():
     return jsonify({"prediction": prediction_result}), 200
 
 # -----------------------
-# Root endpoint (optional)
+# Root endpoint
 # -----------------------
 @app.route("/", methods=["GET"])
 def root():
