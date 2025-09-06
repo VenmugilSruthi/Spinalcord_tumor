@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import os
 from werkzeug.utils import secure_filename
 import logging
+from datetime import datetime, timezone
 
 # -----------------------
 # Basic Logging Setup
@@ -23,7 +24,6 @@ load_dotenv()
 # Create Flask app
 # -----------------------
 app = Flask(__name__)
-# Allow all origins for simplicity in this example. For production, you'd restrict this.
 CORS(app, supports_credentials=True) 
 bcrypt = Bcrypt(app)
 
@@ -34,9 +34,8 @@ MONGO_URI = os.environ.get("MONGO_URI")
 if not MONGO_URI:
     raise ValueError("MONGO_URI environment variable not set")
     
-# Use MongoClient directly for better control
 client = MongoClient(MONGO_URI)
-db = client.get_database() # The database name is part of your MONGO_URI
+db = client.get_database() 
 users_collection = db.users
 predictions_collection = db.predictions
 chatbot_collection = db.chatbot_history
@@ -48,9 +47,9 @@ JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "a-super-secret-key-that-is-lo
 app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 jwt = JWTManager(app)
 
-# ==========================================================
-# NEW AND REQUIRED - Auth: Register endpoint
-# ==========================================================
+# -----------------------
+# Auth: Register endpoint
+# -----------------------
 @app.route("/api/auth/register", methods=["POST"])
 def register():
     try:
@@ -59,86 +58,133 @@ def register():
             return jsonify({"msg": "Missing name, email, or password"}), 400
 
         name = data['name']
-        email = data['email'].lower() # Store email in lowercase to prevent duplicates
+        email = data['email'].lower()
         password = data['password']
 
-        # Check if user already exists
         if users_collection.find_one({"email": email}):
             return jsonify({"msg": "User with this email already exists"}), 409
 
-        # --- THIS IS THE CRITICAL FIX ---
-        # Hash the password before storing it
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-        # Insert the new user with the hashed password
         users_collection.insert_one({
-            "name": name,
-            "email": email,
-            "password": hashed_password  # <-- Store the hashed version
+            "name": name, "email": email, "password": hashed_password
         })
-
         return jsonify({"msg": "User registered successfully"}), 201
-
     except Exception as e:
         logging.error(f"Error in registration: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-
 # -----------------------
-# Auth: Login endpoint (No changes needed here)
+# Auth: Login endpoint
 # -----------------------
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     try:
         data = request.get_json()
-        if not data or "email" not in data or "password" not in data:
-            return jsonify({"msg": "Email and password required"}), 400
-
         email = data["email"].lower()
         password = data["password"]
-
         user = users_collection.find_one({"email": email})
 
-        # This line will now work because the password in the DB is hashed
         if user and bcrypt.check_password_hash(user["password"], password):
-            # Include user details in the response
-            user_info = {
-                "id": str(user["_id"]),
-                "name": user["name"],
-                "email": user["email"]
-            }
+            user_info = {"id": str(user["_id"]), "name": user["name"], "email": user["email"]}
             access_token = create_access_token(identity=str(user["_id"]))
             return jsonify(token=access_token, user=user_info), 200
-
         return jsonify({"msg": "Invalid credentials"}), 401
     except Exception as e:
         logging.error(f"Error in login: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-# -----------------------
-# Upload MRI scan endpoint
-# -----------------------
+# ==========================================================
+# FIX #1: PROFILE ENDPOINT
+# ==========================================================
+@app.route("/api/profile/<string:email>", methods=["GET"])
+@jwt_required()
+def get_profile_by_email(email):
+    try:
+        current_user_id = get_jwt_identity()
+        user = users_collection.find_one({"email": email.lower()})
+
+        if not user or str(user["_id"]) != current_user_id:
+             return jsonify({"msg": "User not found or unauthorized"}), 404
+
+        user_info = {
+            "id": str(user["_id"]),
+            "name": user.get("name"),
+            "email": user.get("email"),
+            "profilePhoto": user.get("profilePhoto")
+        }
+        return jsonify(user_info), 200
+    except Exception as e:
+        logging.error(f"Error fetching profile by email: {e}")
+        return jsonify({"msg": "An internal error occurred"}), 500
+
+# ==========================================================
+# FIX #2: SAVE PREDICTIONS TO DATABASE
+# ==========================================================
 @app.route("/api/predict/upload", methods=["POST"])
 @jwt_required()
 def upload_mri():
     if "mriScan" not in request.files:
         return jsonify({"msg": "No file part in the request"}), 400
-
     file = request.files["mriScan"]
     if file.filename == '':
         return jsonify({"msg": "No file selected for uploading"}), 400
 
-    # For security, always use secure_filename
+    current_user_id = get_jwt_identity()
     filename = secure_filename(file.filename)
-    
-    # In a real app, you would process this file with a model
-    # Here we just simulate a prediction
-    # You could save the file if needed, but for prediction it's often done in memory
     
     # --- TODO: Replace with your actual ML model logic ---
     prediction_result = {"result": "Tumor Detected", "confidence": "95.0%"}
 
+    # --- SAVE PREDICTION TO DB ---
+    try:
+        predictions_collection.insert_one({
+            "userId": ObjectId(current_user_id),
+            "filename": filename,
+            "result": prediction_result["result"],
+            "confidence": prediction_result["confidence"],
+            "timestamp": datetime.now(timezone.utc)
+        })
+    except Exception as e:
+        logging.error(f"Error saving prediction to DB: {e}")
+    
     return jsonify({"prediction": prediction_result}), 200
+
+# ==========================================================
+# FIX #3: DASHBOARD STATS ENDPOINT
+# ==========================================================
+@app.route("/api/predict/stats", methods=["GET"])
+@jwt_required()
+def get_prediction_stats():
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Fetch recent predictions for the current user
+        cursor = predictions_collection.find(
+            {"userId": ObjectId(current_user_id)}
+        ).sort("timestamp", -1).limit(10)
+
+        recent_predictions = [{
+            "date": pred.get("timestamp").strftime("%Y-%m-%d %H:%M"),
+            "filename": pred.get("filename", "N/A"),
+            "result": pred.get("result"),
+            "confidence": pred.get("confidence")
+        } for pred in cursor]
+
+        # Calculate total counts
+        tumor_count = predictions_collection.count_documents({
+            "userId": ObjectId(current_user_id), "result": "Tumor Detected"
+        })
+        no_tumor_count = predictions_collection.count_documents({
+            "userId": ObjectId(current_user_id), "result": {"$ne": "Tumor Detected"}
+        })
+
+        return jsonify({
+            "recent_predictions": recent_predictions,
+            "total_counts": {"tumor": tumor_count, "no_tumor": no_tumor_count}
+        }), 200
+    except Exception as e:
+        logging.error(f"Error fetching prediction stats: {e}")
+        return jsonify({"msg": "An internal error occurred"}), 500
 
 # -----------------------
 # Root endpoint
@@ -151,7 +197,6 @@ def root():
 # Run app
 # -----------------------
 if __name__ == "__main__":
-    # Use PORT from environment variables, default to 5000 for local dev
     port = int(os.environ.get("PORT", 5000))
-    # debug=False is important for production on Render
     app.run(host="0.0.0.0", port=port, debug=False)
+
