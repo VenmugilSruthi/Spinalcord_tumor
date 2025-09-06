@@ -5,6 +5,9 @@ from flask_bcrypt import Bcrypt
 from flask_pymongo import PyMongo
 import os
 
+# -----------------------
+# Create Flask app
+# -----------------------
 app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
@@ -33,6 +36,9 @@ jwt = JWTManager(app)
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     data = request.get_json()
+    if not data or "email" not in data or "password" not in data:
+        return jsonify({"msg": "Email and password required"}), 400
+
     email = data.get("email")
     password = data.get("password")
 
@@ -58,13 +64,22 @@ def upload_mri():
     os.makedirs("uploads", exist_ok=True)
     file.save(filepath)
 
-    # TODO: Replace with your ML model logic
+    # -----------------------
+    # TODO: Replace with your actual ML model logic
+    # -----------------------
     prediction_result = {"result": "tumor", "confidence": 0.95}
 
     return jsonify({"prediction": prediction_result}), 200
 
 # -----------------------
-# Run app
+# Root endpoint (optional)
+# -----------------------
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"msg": "Spinal Cord Tumor Detection API is running"}), 200
+
+# -----------------------
+# Run app locally
 # -----------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
