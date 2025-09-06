@@ -117,6 +117,30 @@ def get_profile_by_email(email):
         logging.error(f"Error fetching profile by email: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
+# ==========================================================
+# FINAL FIX: PROFILE UPDATE ENDPOINT
+# ==========================================================
+@app.route("/api/profile/update", methods=["PUT"])
+@jwt_required()
+def update_profile():
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        new_name = data.get("name")
+
+        if not new_name:
+            return jsonify({"error": "Name is required"}), 400
+
+        users_collection.update_one(
+            {"_id": ObjectId(current_user_id)},
+            {"$set": {"name": new_name}}
+        )
+        return jsonify({"success": True, "msg": "Profile updated successfully!"}), 200
+    except Exception as e:
+        logging.error(f"Error updating profile: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
+
+
 # -----------------------
 # Prediction: Upload MRI scan and save result
 # -----------------------
@@ -183,9 +207,9 @@ def get_prediction_stats():
         logging.error(f"Error fetching prediction stats: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-# ==========================================================
-# CHATBOT 'ASK' ENDPOINT
-# ==========================================================
+# -----------------------
+# Chatbot: 'Ask' endpoint
+# -----------------------
 @app.route("/api/chatbot/ask", methods=["POST"])
 @jwt_required()
 def ask_chatbot():
@@ -214,9 +238,9 @@ def ask_chatbot():
         logging.error(f"Error in chatbot ask endpoint: {e}")
         return jsonify({"msg": "An internal error occurred"}), 500
 
-# ==========================================================
-# CHATBOT HISTORY ENDPOINT
-# ==========================================================
+# -----------------------
+# Chatbot: History endpoint
+# -----------------------
 @app.route("/api/chatbot/history", methods=["GET"])
 @jwt_required()
 def get_chat_history():
