@@ -12,4 +12,4 @@ torch
 torchvision
 Pillow
 Flask-Bcrypt==1.0.1
-opencv-python-headless  # <-- ADD THIS LINE
+opencv-python-headless
